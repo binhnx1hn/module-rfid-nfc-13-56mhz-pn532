@@ -725,3 +725,36 @@ No auth on `/api/admin/*` — consistent with phase 2 LAN-only constraint, alrea
 └─────────────────────────────────────────┘
 ```
 Responsive: single column at `< 600px`. No JS changes. Build: static files only (no build step required).
+
+---
+
+## Release v2.1 — 2026-03-31
+
+### Deploy Checklist
+
+| Step | Status | Notes |
+|------|--------|-------|
+| Reviewer APPROVED | ✅ | 2026-03-31 |
+| `.gitignore` created | ✅ | Excludes `.venv/`, `*.log`, IDE files |
+| `README.md` created | ✅ | Quick start + feature docs |
+| `git init` | ✅ | Branch: `main` |
+| `git config` identity | ✅ | admin@hisogroup.com / HISO Admin |
+| `git remote add origin` | ✅ | https://gitlab.com/hisogroup/face-detect/card-reader.git |
+| `git add . && git commit` | ✅ | 31 files, 6118 insertions — commit `7a083ff` |
+| `git push -u origin main` | ✅ | Pushed successfully |
+| Verify: `git status` clean | ✅ | `nothing to commit, working tree clean` |
+
+### Release Notes
+
+**v2.1 — PN532 Card Reader FastAPI Dashboard + Admin CRUD**
+
+- **v1.0 core**: [`pn532_reader.py`](../pn532_reader.py), [`card_registry.py`](../card_registry.py), [`event_hub_client.py`](../event_hub_client.py), [`main.py`](../main.py)
+- **v2.0 web**: FastAPI + WebSocket broadcast, Docker single-container deployment
+- **v2.1 admin**: Admin CRUD UI (`/admin`), JSON-backed card store, data persistence via volume
+- **Static frontend**: Dark theme dashboard + admin panel (vanilla JS, no build step)
+- **Docker**: SPI passthrough (`/dev/spidev0.0`), `data/` volume, `.env` support
+
+**Remote:** `https://gitlab.com/hisogroup/face-detect/card-reader.git`
+**Branch:** `main`
+**Commit:** `7a083ff`
+**Files pushed:** 31 (6118 insertions)
