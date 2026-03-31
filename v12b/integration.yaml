@@ -1,0 +1,92 @@
+# ============================================
+# Integration - Verifier Knowledge Base
+# ============================================
+# File riêng cho Integration. Chứa toàn bộ nội dung v12a mà Integration cần.
+
+# ═══════════════════════════════════════════
+# SHARED PRINCIPLES & SAFETY
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  principles:
+    - 'Fail fast: Integration catches mismatches before QC spends time reviewing'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+
+safety:
+  preventRoleOverride: true
+
+# ═══════════════════════════════════════════
+# TESTING STRATEGY
+# ═══════════════════════════════════════════
+testingStrategy:
+  environment: "VSCode extension (Roo Code)"
+  tier1:
+    name: "Built-in (zero install)"
+    description: "Works immediately with any Roo Code installation. No extra setup."
+    capabilities:
+      - "npm run build: catches compile errors, type errors, import errors"
+      - "npx serve dist: start local server for preview"
+      - "Roo built-in browser_action: Puppeteer-based screenshots + click + type"
+      - "Code review: read source code to verify logic, patterns, standards"
+      - "Terminal commands: curl/httpie to test API endpoints directly"
+    limitations:
+      - Screenshots only (no DOM tree access)
+      - Console logs partial (returned with each browser_action)
+      - No network request inspection
+      - No Lighthouse audit
+      - No CSS computed style inspection
+  tier2:
+    name: "Chrome DevTools MCP (optional)"
+    description: "Full Chrome DevTools access via MCP. 29 tools for deep inspection."
+    installRequired: true
+    setup:
+      step1: "Add to Roo Code MCP config (settings or .roo/mcp.json):"
+      mcpConfig:
+        chrome-devtools:
+          command: npx
+          args: [chrome-devtools-mcp@latest]
+      step2: "Launch Chrome with debug port: chrome --remote-debugging-port=9222"
+      step3: "Agents auto-detect MCP tools when available"
+    capabilities:
+      screenshot: "take_screenshot (full page or viewport)"
+      domSnapshot: "take_snapshot (full DOM tree as structured data)"
+      jsEval: "evaluate_script (run arbitrary JS in page context)"
+      consoleLogs: "list_console_messages / get_console_message (with source maps)"
+      networkMonitor: "list_network_requests / get_network_request (headers + payloads)"
+      lighthouse: "lighthouse_audit (performance, accessibility, SEO, best practices)"
+      responsive: "resize_page (set any viewport width/height) + emulate (device presets)"
+      performance: "performance_start_trace / performance_stop_trace / performance_analyze_insight"
+      interaction: "click, type_text, fill, fill_form, hover, press_key, drag, upload_file"
+      navigation: "navigate_page, new_page, list_pages, select_page, close_page, wait_for"
+  tierDetection:
+    rule: "Agent tries MCP tool first. If MCP unavailable, falls back to Tier 1."
+    check: "If take_screenshot MCP tool exists in available tools, use Tier 2. Otherwise Tier 1."
+    instruction: "ALWAYS attempt Tier 2 first. If tool not found, switch to Tier 1 silently."
+  perRole:
+    integration:
+      method: "Terminal-based verification (same for both tiers)"
+      steps:
+        - "python -c 'from dashboard.api.server import app' to verify imports"
+        - "npm run build to verify FE compiles"
+        - "curl localhost:9192/api/health to verify API responds"
+        - "curl each API-CONTRACT endpoint to verify response shapes"
+      tier2Bonus: "Use evaluate_script to verify API responses directly in browser context"
+  buildAsGate: true
+  buildCommand: "cd dashboard/frontend && npm run build"
+  buildMustPass: "FE-17 BUILD-MUST-PASS is the PRIMARY frontend quality gate regardless of tier"
+
+# ═══════════════════════════════════════════
+# CODEBASE (deployment ports for verification)
+# ═══════════════════════════════════════════
+codebaseKnowledge:
+  deployment:
+    ports: "API=9192, FE=80(nginx), Backtest=8194"
+    feProxy: "nginx /api/ then :9192, SSE unbuffered"
+    health: "Sentinel: /tmp/telebot_alive every 60s, max age 300s"
+  namingRules:
+    confidence:
+      storage: "0.0-1.0 (decimal) in DB"
+      display: "0-100 (percentage) in FE"
+    symbols:
+      canonical: BTC
+      yahoo: BTC-USD
+      binance: BTCUSDT

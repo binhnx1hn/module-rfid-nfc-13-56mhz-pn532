@@ -1,0 +1,452 @@
+# ============================================
+# PM - Project Manager Knowledge Base
+# ============================================
+# File riêng cho PM. Chứa toàn bộ nội dung v12a mà PM cần.
+# PM là HUB — cần biết orchestration, flow, scaling, stuck detection.
+
+# ═══════════════════════════════════════════
+# ONE-SHOT PROTOCOL
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  enabled: true
+  principles:
+    - 'Read before write: every agent reads codemap.md + project.md + audit.md before ANY code change'
+    - 'Contract-first: BA writes contract, BE writes API-CONTRACT, FE reads API-CONTRACT'
+    - 'Fail fast: Integration catches mismatches before QC spends time reviewing'
+    - 'Minimal diff: only change what BA spec requires, nothing more'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+  contextStrategy:
+    onboarding: 5 mandatory reads (modes YAML, codemap, project, audit, previous stage output)
+    carryForward: false
+    refreshOnFix: true
+  qualityGates:
+    - gate: integration
+      purpose: Verify it WORKS (builds, starts, responds)
+    - gate: vision-parser
+      purpose: Verify it LOOKS RIGHT (layout, responsive, states)
+    - gate: qc
+      purpose: Verify it is CORRECT and CLEAN (specs, standards, security)
+    - gate: reviewer
+      purpose: Verify it is WISE (architecture, production readiness, tech debt)
+
+# ═══════════════════════════════════════════
+# PM CHECKPOINT
+# ═══════════════════════════════════════════
+pmCheckpoint:
+  enabled: true
+  intervalMin: 60
+  trigger: After each subtask attempt_completion returns to PM OR after 1hr elapsed
+  selfReminder: true
+  checkItems:
+    doing: What is currently IN_PROGRESS? Which stage, which agent, what task?
+    done: What stages are DONE? Brief summary of each completed output.
+    left: What stages are LEFT? List remaining stages with status.
+    next: What is the NEXT action? Which agent activates next?
+    blockers: Any blockers? Stuck patterns, failed retries, timeout risks?
+    time: Elapsed time vs estimated time (from taskScaling profile)?
+    mdFiles: Are all .md files up to date? codemap.md, project.md, audit.md, research.md?
+  output: PM writes checkpoint in project.md under active pipeline
+  escalation: If 2 consecutive checkpoints show no progress, escalate to user immediately
+  systemReminder:
+    enabled: true
+    mechanism: PM self-triggers after each subtask completion. No external timer needed.
+    protocol: |
+      After EVERY attempt_completion received from a subtask:
+      1. Read the subtask result
+      2. Check: has it been >1hr since last checkpoint?
+      3. If YES: write checkpoint in project.md before delegating next subtask
+      4. If NO: proceed to delegate next subtask
+      5. ALWAYS update project.md with subtask results regardless of checkpoint timing
+    thinkingProtocol: |
+      Forward thinking (what exists, what to do):
+      - Read codemap.md: what code exists now?
+      - Read project.md: what pipeline is active? what stage are we at?
+      - Read audit.md: what issues are open?
+      Backward thinking (verify, validate):
+      - Did the last subtask actually complete what was asked?
+      - Does the output match BA specs?
+      - Are there gaps between what was requested and what was delivered?
+      Then decide: delegate next stage or reroute for fixes?
+  format: |
+    ## PM Checkpoint [HH:MM]
+    - DOING: {stage} by {agent} - {description}
+    - DONE: {list of completed stages with 1-line summary each}
+    - LEFT: {list of remaining stages}
+    - NEXT: {next agent} will {action}
+    - BLOCKERS: {none | list}
+    - TIME: {elapsed}min / {estimated}min ({percentage}%)
+    - MD STATUS: codemap({ok|needs update}) project({ok|needs update}) audit({ok|needs update})
+
+# ═══════════════════════════════════════════
+# EXECUTION POLICY
+# ═══════════════════════════════════════════
+executionPolicy:
+  askForConfirmation: false
+  retryOnFailure: true
+  maxRetries: 3
+  retryStrategy: exponential
+  retryDelayMs: 400
+  continueOnError: false
+  failFastOnCritical: true
+  speculativeExecution: true
+  idempotencyRequired: true
+  requireArtifactsBeforeRelease: true
+  escalateAfterMaxRetries: true
+
+# ═══════════════════════════════════════════
+# ORCHESTRATION
+# ═══════════════════════════════════════════
+orchestration:
+  entry: pm
+  pattern: boomerang
+  autoHandoff: true
+  parallelExecution: false
+  deterministicRouting: true
+  signalTTLms: 120000
+  autoApproveRequired:
+    subtasks: true
+    modeSwitching: true
+    readFiles: true
+    editFiles: true
+    commands: true
+    mcp: true
+    browser: true
+    description: Enable ALL auto-approve settings in Roo Code for one-shot execution
+    setupGuide:
+      step1: Open Roo Code Settings (gear icon)
+      step2: Toggle ON all auto-approve switches (Read, Edit, Command, MCP, Browser, Mode Switch, Subtasks)
+      step3: 'In "Allowed Commands" field, enter * (wildcard = allow all)'
+      step4: Or press Ctrl+Alt+A to toggle all at once
+      note: This is a VS Code setting, NOT configurable from YAML. Must set manually once per machine.
+    commandPolicy:
+      allowlist: '*'
+      rule: approve ALL commands EXCEPT those that modify system drive C:/
+      blocked:
+        - any command writing to C:/ or C:\
+        - rm/del on system paths
+        - registry edits
+        - system service modifications
+  boomerangFlow:
+    hub: pm
+    spokes: [ba, be-dev, fe-dev, integration, vision-parser, qc, reviewer, deliver]
+    mechanism: PM uses new_task tool to delegate. Each spoke uses attempt_completion to return results.
+    contextPassing: PM must pass ALL relevant context in new_task message (specs, API contracts, findings). Subtasks have NO access to parent conversation history.
+    isolation: Each subtask runs in its own context window. File system changes persist between subtasks.
+  delegationProtocol:
+    pm_to_ba: "new_task(mode='ba', message='Pipeline WF-{N}. Request: {user_request}. Read codemap.md and project.md. Write specs.')"
+    pm_to_be: "new_task(mode='be-dev', message='Pipeline WF-{N}. BA Specs: {specs}. Implement BE tasks. Write API-CONTRACT.')"
+    pm_to_fe: "new_task(mode='fe-dev', message='Pipeline WF-{N}. BA Specs: {specs}. API-CONTRACT: {contract}. Implement FE tasks.')"
+    pm_to_integration: "new_task(mode='integration', message='Pipeline WF-{N}. BE Output: {be_output}. FE Output: {fe_output}. Run CHECK-01 through CHECK-05.')"
+    pm_to_vision: "new_task(mode='vision-parser', message='Pipeline WF-{N}. Changed pages: {pages}. BA wireframe: {wireframe}. Run VIS-01 through VIS-05.')"
+    pm_to_qc: "new_task(mode='qc', message='Pipeline WF-{N}. BA Specs: {specs}. Dev Output: {output}. Integration: PASS. Run full QC audit.')"
+    pm_to_reviewer: "new_task(mode='reviewer', message='Pipeline WF-{N}. QC verdict: PASS. Changes: {summary}. Review architecture fitness.')"
+    pm_to_deliver: "new_task(mode='deliver', message='Pipeline WF-{N}. Reviewer: APPROVED. Run DEPLOY-01 through DEPLOY-06.')"
+  completionProtocol:
+    rule: Every non-PM mode MUST end with attempt_completion(result='structured summary')
+    format: |
+      ## {Role} Output – WF-{N}
+      **Status**: DONE / FAIL
+      **Summary**: {1-2 sentences}
+      **Artifacts**: {files created/modified}
+      **Key Findings**: {important items for next stage}
+      **Signal**: {signal_name} (for PM routing)
+
+# ═══════════════════════════════════════════
+# AUTO SCALING & LOAD BALANCING
+# ═══════════════════════════════════════════
+autoScaling:
+  enabled: true
+  samplingIntervalMs: 500
+  metrics: [queueDepth, cpuLoad, taskLatency, roleBacklog, memoryPressure]
+  policy:
+    scaleUp:
+      cpuBelow: 75
+      queueAbove: 5
+      latencyAboveMs: 1200
+      step: 4
+    scaleDown:
+      cpuAbove: 85
+      queueBelow: 2
+      latencyBelowMs: 300
+      step: 2
+  limits:
+    minWorkers: 8
+    maxWorkers: 80
+  smoothing:
+    spikeProtection: true
+    movingAverageWindow: 5
+    cooldownMs: 1500
+
+roleBalancer:
+  enabled: true
+  rebalanceEveryMs: 1000
+  strategy: demand-weighted
+  priorities:
+    qc: 4
+    vision-parser: 4
+    fe-dev: 3
+    be-dev: 3
+    integration: 2
+    deliver: 2
+    pm: 1
+    ba: 1
+    reviewer: 1
+  guarantees:
+    pm: 1
+    ba: 1
+    reviewer: 1
+    vision-parser: 1
+
+loadBalancer:
+  strategy: predictive-least-load
+  rebalanceIntervalMs: 500
+  preemptLongTasks: true
+  maxTaskTimeSec: 45
+
+workerPolicy:
+  maxConcurrentTasksPerWorker: 2
+  isolateLongTasks: true
+  longTaskThresholdSec: 20
+  recycleAfterTasks: 40
+
+workerOverrides:
+  vision-parser:
+    maxConcurrentTasks: 1
+    isolate: true
+    gpuPreferred: true
+  qc:
+    maxConcurrentTasks: 2
+
+bottleneckDetection:
+  enabled: true
+  detect: [roleStarvation, queueCongestion, longTasks, retryStorm, gpuContention]
+  autoMitigation:
+    roleStarvation: rebalance-workers
+    queueCongestion: increase-workers
+    longTasks: isolate-worker
+    retryStorm: throttle-retries
+    gpuContention: limit-vision-workers
+
+# ═══════════════════════════════════════════
+# SIGNAL FLOW
+# ═══════════════════════════════════════════
+flow:
+  - { from: ba, true: spec-ready, to: pm }
+  - { from: pm, true: plan-ready, to: [be-dev, fe-dev] }
+  - { from: be-dev, true: be-done, to: integration }
+  - { from: fe-dev, true: fe-done, to: integration }
+  - { from: integration, true: integration-verified, to: vision-parser }
+  - { from: integration, true: integration-verified-be-only, to: qc }
+  - { from: vision-parser, true: vision-passed, to: qc }
+  - { from: vision-parser, true: vision-failed, to: pm }
+  - { from: qc, true: qc-pass, to: reviewer }
+  - { from: reviewer, true: approved, to: deliver }
+  - { from: deliver, true: released, to: pm }
+  - { from: qc, true: qc-fail, to: pm }
+  - { from: pm, true: route-be-bug, to: be-dev }
+  - { from: pm, true: route-fe-bug, to: fe-dev }
+  - { from: pm, true: route-both-bug, to: [be-dev, fe-dev] }
+  - { from: be-dev, true: be-fix-done, to: qc }
+  - { from: fe-dev, true: fe-fix-done, to: qc }
+  - { from: pm, true: escalate-senior-dev, to: reviewer }
+  - { from: pm, true: escalate-po, to: pm }
+  - { from: integration, true: integration-fail-rollback, to: pm }
+  - { from: qc, true: qc-fail-security, to: pm }
+  - { from: deliver, true: deploy-fail-rollback, to: pm }
+  - { from: reviewer, true: rejected, to: pm }
+
+# ═══════════════════════════════════════════
+# LOOP CONTROL & SAFETY
+# ═══════════════════════════════════════════
+loopControl:
+  maxQCRetries: 3
+  maxPipelineCycles: 10
+  maxCycles: 120
+  detectInfiniteLoop: true
+  stuckTimeoutMin: 30
+  stuckTimeoutSec: 90
+  forceBreakIfStuck: true
+  autoDumpStateOnLoop: true
+  onStuck: escalate-to-user
+
+safety:
+  preventRoleOverride: true
+  forbidContractMutation: true
+  forbidSpecMutation: true
+  blockUnauthorizedSignals: true
+  requireSignalSignature: true
+  rejectUnknownRoles: true
+  maxSignalChainDepth: 40
+
+# ═══════════════════════════════════════════
+# TASK SCALING
+# ═══════════════════════════════════════════
+taskScaling:
+  enabled: true
+  profiles:
+    trivial:
+      skipStages: [ba, integration, vision-parser, reviewer, deliver]
+      pipeline: [pm, be-dev, qc, pm]
+      maxTimeMin: 10
+    simple:
+      skipStages: [integration, vision-parser, deliver]
+      pipeline: [pm, ba, "be-dev|fe-dev", qc, pm]
+      maxTimeMin: 20
+    standard:
+      skipStages: []
+      pipeline: [pm, ba, be-dev, fe-dev, integration, vision-parser, qc, reviewer, deliver, pm]
+      maxTimeMin: 60
+    complex:
+      skipStages: []
+      pipeline: [pm, ba, be-dev, fe-dev, integration, vision-parser, qc, reviewer, deliver, pm]
+      maxTimeMin: 120
+      extraChecks:
+        - ARCH-review before coding (Reviewer pre-check)
+        - Split into sub-pipelines if >400 LOC total
+  classificationRules:
+    trivial: "<=5 LOC, no new files, no API change"
+    simple: "<50 LOC, <=1 new file, minor API change"
+    standard: "50-200 LOC, <=3 new files, new endpoints"
+    complex: ">200 LOC, new module, architecture impact"
+
+# ═══════════════════════════════════════════
+# PRIORITY ROUTING
+# ═══════════════════════════════════════════
+priorityRouting:
+  enabled: true
+  fixPriority:
+    security: 5
+    backend-api: 4
+    database: 4
+    backend-logic: 3
+    frontend-logic: 3
+    frontend-ui: 2
+    documentation: 1
+  rules:
+    - 'If both BE + FE fail: fix BE first (priority 3-4), then FE (priority 2-3)'
+    - 'If security + anything: fix security first (priority 5), halt other fixes'
+    - 'If same finding fails 2x: bump priority +1 (harder than expected)'
+
+# ═══════════════════════════════════════════
+# TASK ISOLATION (all roles boundaries — PM needs to know for delegation)
+# ═══════════════════════════════════════════
+taskIsolation:
+  enabled: true
+  boundaries:
+    ba: [read-all, write-research.md, write-project.md]
+    pm: [read-all, write-project.md]
+    be-dev: [read-all, write-py, write-codemap.md, write-project.md]
+    fe-dev: [read-all, write-tsx-css-html, write-codemap.md, write-project.md]
+    integration: [read-all, run-commands, write-project.md]
+    vision-parser: [read-all, run-commands, screenshot, write-project.md]
+    qc: [read-all, run-commands, write-audit.md, write-project.md]
+    reviewer: [read-all, write-project.md]
+    deliver: [read-all, run-commands, git-tag, write-project.md]
+  contextRefresh:
+    onStageStart: true
+    onFixCycle: true
+    carryForward: false
+  fileGuard:
+    be-dev:
+      allowed: ["_lib/**", "telebot/**", "backtest/**", "dashboard/api/**", "shared/**", "*.py"]
+      blocked: ["dashboard/frontend/**", "*.tsx", "*.css"]
+    fe-dev:
+      allowed: ["dashboard/frontend/**", "*.tsx", "*.css", "*.html"]
+      blocked: ["_lib/**", "telebot/**", "backtest/**", "dashboard/api/**", "*.py"]
+
+# ═══════════════════════════════════════════
+# STAGE TIMEOUT
+# ═══════════════════════════════════════════
+stageTimeout:
+  enabled: true
+  defaults: { trivial: 5, simple: 10, standard: 20, complex: 40 }
+  perRole:
+    ba: 1.0x
+    be-dev: 1.5x
+    fe-dev: 1.0x
+    integration: 0.5x
+    vision-parser: 0.75x
+    qc: 1.0x
+    reviewer: 0.5x
+    deliver: 1.0x
+  onTimeout:
+    action: escalate-to-user
+    message: "Stage {role} exceeded {timeout}min on WF-{pipeline}. Likely stuck."
+    autoSave: true
+
+# ═══════════════════════════════════════════
+# STUCK DETECTION
+# ═══════════════════════════════════════════
+stuckDetection:
+  enabled: true
+  patterns:
+    - id: STUCK-01
+      name: Same finding fails twice
+      description: QC reports same finding in consecutive reviews. Don't retry 3rd time.
+      action: escalate-to-user
+      message: "Finding {finding_id} failed 2x. Dev may not understand. User needed."
+    - id: STUCK-02
+      name: Fix introduces new bugs
+      description: QC pass count decreases after fix cycle. Regression detected.
+      action: escalate-to-user
+      message: "Fix caused regression: {prev_pass}/{prev_total} to {curr_pass}/{curr_total}."
+    - id: STUCK-03
+      name: Integration fails after Dev DONE
+      description: Integration fails 2x after Dev marks DONE. Dev self-check broken.
+      action: route-to-pm
+      message: "Integration failed 2x. Dev VERIFY-BEFORE-SHIP not catching issues."
+    - id: STUCK-04
+      name: Reviewer rejects twice
+      description: Reviewer rejects same pipeline 2x. Architecture disagreement.
+      action: escalate-to-user
+      message: "Reviewer rejected WF-{pipeline} 2x. Needs user decision."
+    - id: STUCK-05
+      name: Stage timeout exceeded
+      description: Any stage exceeds timeout from stageTimeout section.
+      action: escalate-to-user
+      message: "Stage {role} timed out at {elapsed}min (limit {timeout}min)."
+  earlyWarning:
+    enabled: true
+    atRetry: 2
+    message: "WF-{pipeline} retry {n}/3. Pattern: {pattern}. May need intervention."
+
+# ═══════════════════════════════════════════
+# ARTIFACT MANAGEMENT
+# ═══════════════════════════════════════════
+artifactStore:
+  enabled: true
+  backend: memory
+  compression: true
+  ttlMinutes: 180
+  deduplicate: true
+  maxArtifactsPerRun: 600
+
+artifactLifecycle:
+  enabled: true
+  states:
+    active: { retention: forever, detail: full }
+    completed: { retention: 7d, detail: full }
+    archived: { retention: 90d, detail: summary, location: "project.md section III Task Board Completed" }
+    pruned: { action: move-to-archive, keepInProjectMd: false }
+  rules:
+    - PM archives completed pipelines during version bump
+    - PM prunes archived pipelines older than 90 days during onboarding
+    - Never prune pipelines with open audit.md findings
+    - "Archive format: WF-NNN | Date | Request | Result | Key Findings"
+
+# ═══════════════════════════════════════════
+# MEMORY MANAGEMENT
+# ═══════════════════════════════════════════
+memoryManagement:
+  file: /docs/memory.md
+  owner: pm
+  updateTrigger: After each pipeline completion (version bump)
+  updateRules:
+    - Add new patterns/conventions discovered during pipeline
+    - Add common mistakes caught by QC (section VII)
+    - Add key decisions with rationale (section VIII)
+    - Update user preferences if new ones observed (section IX)
+    - Add key learnings from pipeline execution (section X)
+    - Keep each item to 1 line — concise, actionable
+    - Remove outdated items (strategies retired, constants changed)
+    - Never exceed ~150 lines total — prune oldest low-value items if needed

@@ -1,0 +1,79 @@
+# ============================================
+# Deliver - Release Manager Knowledge Base
+# ============================================
+# File riêng cho Deliver. Chứa toàn bộ nội dung v12a mà Deliver cần.
+
+# ═══════════════════════════════════════════
+# SHARED PRINCIPLES & SAFETY
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  principles:
+    - 'Minimal diff: only change what BA spec requires, nothing more'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+
+safety:
+  preventRoleOverride: true
+  requireArtifactsBeforeRelease: true
+
+# ═══════════════════════════════════════════
+# CODEBASE KNOWLEDGE (Deployment)
+# ═══════════════════════════════════════════
+codebaseKnowledge:
+  architecture:
+    type: 3-folder monorepo
+    stack: "Python 3.11 (FastAPI + Telegram) + React 19 (TS/Vite) + SQLite/PostgreSQL"
+  deployment:
+    platform: "Railway single all-in-one Docker"
+    dockerfile: "dashboard/Dockerfile"
+    entrypoint: "dashboard/start.sh (tini PID 1)"
+    processes: "nginx(:$PORT) + uvicorn(:9192) + telebot + backtest(:8194)"
+    feProxy: "nginx /api/ then :9192, SSE unbuffered"
+    health: "Sentinel: /tmp/telebot_alive every 60s, max age 300s"
+    ports: "API=9192, FE=80(nginx), Backtest=8194"
+
+# ═══════════════════════════════════════════
+# ARTIFACT MANAGEMENT
+# ═══════════════════════════════════════════
+artifactStore:
+  enabled: true
+  backend: memory
+  compression: true
+  ttlMinutes: 180
+  deduplicate: true
+  maxArtifactsPerRun: 600
+
+artifactLifecycle:
+  enabled: true
+  states:
+    active: { retention: forever, detail: full }
+    completed: { retention: 7d, detail: full }
+    archived: { retention: 90d, detail: summary, location: "project.md section III Task Board Completed" }
+    pruned: { action: move-to-archive, keepInProjectMd: false }
+  rules:
+    - PM archives completed pipelines during version bump
+    - PM prunes archived pipelines older than 90 days during onboarding
+    - Never prune pipelines with open audit.md findings
+    - "Archive format: WF-NNN | Date | Request | Result | Key Findings"
+
+# ═══════════════════════════════════════════
+# SHIPPING CRITERIA
+# ═══════════════════════════════════════════
+shippingCriteria:
+  perFeature:
+    - Customer need clearly stated (WHY)
+    - Data source identified (existing DB table or new CREATE TABLE)
+    - API contract defined (method, path, request body, response shape)
+    - FE component identified (new page or existing component)
+    - Effort classified (TRIVIAL/SIMPLE/STANDARD/COMPLEX per BE + FE)
+  perPhase:
+    - All features pass QC + Reviewer APPROVED
+    - All new API endpoints documented in codemap.md
+    - All new tables have migration scripts (idempotent)
+    - Docker build passes with zero errors
+    - No S-01 through S-06 security violations
+    - project.md updated with version entry
+  perRelease:
+    - Version bumped in project.md
+    - Git tag created (vX.Y.Z)
+    - Release notes written (DEPLOY-04)
+    - Production health verified (DEPLOY-06)

@@ -1,0 +1,24 @@
+version: "3.9"
+services:
+  card-reader:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    devices:
+      - /dev/spidev0.0:/dev/spidev0.0
+      - /dev/spidev0.1:/dev/spidev0.1
+      - /dev/gpiochip0:/dev/gpiochip0
+    group_add:
+      - "989"  # spi GID on this Pi
+      - "986"  # gpio GID on this Pi
+    environment:
+      - EVENT_HUB_URL=${EVENT_HUB_URL:-http://192.168.21.47:8000/events/ingest}
+      - READER_ID=${READER_ID:-CR-001}
+      - LOCATION=${LOCATION:-main_entrance}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - BLINKA_FORCECHIP=BCM2XXX
+      - BLINKA_FORCEBOARD=RASPBERRY_PI_5
+    volumes:
+      - /dev/gpiomem0:/dev/gpiomem0
+      - ./data:/app/data

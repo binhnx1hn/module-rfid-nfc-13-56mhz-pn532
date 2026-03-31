@@ -1,0 +1,295 @@
+# ============================================
+# BA - Business Analyst Knowledge Base
+# ============================================
+# File riêng cho BA. Chứa toàn bộ nội dung v12a mà BA cần.
+
+# ═══════════════════════════════════════════
+# SHARED PRINCIPLES & SAFETY
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  principles:
+    - 'Read before write: every agent reads codemap.md + project.md + audit.md before ANY code change'
+    - 'Contract-first: BA writes contract, BE writes API-CONTRACT, FE reads API-CONTRACT'
+    - 'Fail fast: Integration catches mismatches before QC spends time reviewing'
+    - 'Minimal diff: only change what BA spec requires, nothing more'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+
+safety:
+  forbidContractMutation: true
+  forbidSpecMutation: true
+
+# ═══════════════════════════════════════════
+# BA STANDARDS
+# ═══════════════════════════════════════════
+standards:
+  ba:
+    - BA-01 ATOMIC-TASKS
+    - BA-02 FILE-PATH-REQUIRED
+    - BA-03 NO-VAGUE-SPECS
+    - BA-04 SCOPE-GATE
+    - BA-05 RISK-ASSESSMENT
+    - BA-06 REUSE-CHECK
+    - BA-07 DEPENDENCY-APPROVAL
+    - BA-08 COMPLEXITY-HONEST
+
+# ═══════════════════════════════════════════
+# CODEBASE KNOWLEDGE
+# ═══════════════════════════════════════════
+codebaseKnowledge:
+  architecture:
+    type: 3-folder monorepo
+    stack: "Python 3.11 (FastAPI + Telegram) + React 19 (TS/Vite) + SQLite/PostgreSQL"
+    deploy: "Railway all-in-one Docker: tini then nginx + uvicorn + telebot + backtest"
+    symbols: "135 total (59 Crypto, 36 Commodity, 33 Forex, 6 Index, 1 ETF)"
+    folders:
+      _lib/tradingbot/: "Shared Python package (92 .py) config/ core/ db/ data/ strategy/ backtest/ broker/ trading/ utils/ infra/"
+      dashboard/: "API server (24 .py) + FE (152 .ts/.tsx) api/server.py + frontend/src/"
+      telebot/: "Telegram Bot + Scheduler (36 .py) app.py + bot/scheduler/ + bot/commands/"
+      backtest/: "Backtest Service + Scripts (64 .py) service/ + scripts/(alerts, backtest, data, ops, strategy)"
+      shared/: "SSOT JSON configs strategies.config.json + symbols.config.json"
+      docs/: "project.md (PM owns), codemap.md (Devs own), audit.md (QC owns)"
+  databases:
+    indicator.db:
+      manager: _lib/tradingbot/db/indicator_db.py
+      pgManager: _lib/tradingbot/db/indicator_pg_db.py
+      pgName: huntbtc_indicator
+      tables:
+        indicator_alerts: "id, timestamp, symbol, alert_type, signal, confidence(0-1), price, entry_price, stop_loss, take_profit_1/2/3, rsi/rsi_7/rsi_14/rsi_21, mtf_confluence, ma50/ma200/adx/vix, funding_rate, reason, regime, strategy_key, timeframe_tag, asset_class, data_source, exchange_symbol, trade_url, chart_url, outcome, pnl_percent, is_notified, is_traded, original_alert_id, created_at"
+        indicator_trades: "id, strategy_key, symbol, side, entry_date, exit_date, entry_price, exit_price, quantity, pnl, pnl_percent, fees, signal_name, tags, status"
+        indicator_positions: "id, strategy_key, symbol, side, quantity, entry_price, current_price, unrealized_pnl UNIQUE(strategy_key, symbol)"
+        indicator_equity: "id, strategy_key, date, equity, cash, positions_value, daily_pnl, drawdown UNIQUE(strategy_key, date)"
+        bot_regimes: "id, bot_id, regime(BULL/BEAR), is_enabled, reason UNIQUE(bot_id)"
+        chart_images: "id, alert_id, symbol, file_path, url, signal, entry/tp/sl prices"
+        tlg_alerts: "id, alert_id, bot_id, chat_id, message_text, is_sent UNIQUE(alert_id, bot_id, chat_id)"
+        subscribers: "id, chat_id, chat_type, chat_title, bot_ids, is_active, license_key UNIQUE(chat_id)"
+    strategies.db:
+      manager: _lib/tradingbot/db/strategy_db.py
+      tables:
+        backtest_strategies: "id, name, config, status, strategy_key, is_active, asset_type, activated_at"
+        backtest_stats: "id, strategy_key, win_rate, cagr, max_drawdown, total_trades, computed_at"
+    backtest_results.db:
+      manager: _lib/tradingbot/db/backtest_results_db.py
+      tables:
+        backtest_alerts: "id, strategy_key, symbol, signal, alert_type, confidence, price, entry_price, stop_loss, take_profit_1/2/3, rsi, reason, idempotency_key(UNIQUE)"
+        backtest_trades: "id, strategy_key, symbol, side, entry/exit date/price, pnl, pnl_percent, stop_loss, take_profit"
+        backtest_equity_curve: "id, strategy_key, date, equity, drawdown, peak UNIQUE(strategy_key, date)"
+        backtest_rebalances: "id, strategy_key, date, regime, allocations, action"
+    license.db:
+      manager: _lib/tradingbot/db/license_db.py
+      tables:
+        license_keys: "id, license_key(UNIQUE), user_id, chat_id, is_active, is_permanent, tier, expires_at"
+        dashboard_users: "id, username(UNIQUE), license_key, display_name, is_active"
+        user_api_keys: "id, user_id(UNIQUE), exchange, api_key_encrypted, api_secret_encrypted"
+    prices_data.db:
+      manager: _lib/tradingbot/data/lake_db.py
+      tables:
+        prices_symbols: "id, symbol, name, asset_class, yahoo/binance/bybit/coingecko/tradingview symbols"
+        prices: "symbol_id, date, interval, open, high, low, close, volume, turnover"
+        vn_gold_prices: "date, price"
+  namingRules:
+    tablePrefix:
+      backtest: "backtest_alerts, backtest_trades (Module I historical 2010-2025)"
+      indicator: "indicator_alerts, indicator_trades (Module II live 24/7)"
+      pgAlias: "PG table 'alerts' = indicator_alerts (abstraction layer handles mapping)"
+    confidence:
+      storage: "0.0-1.0 (decimal) in DB"
+      display: "0-100 (percentage) in FE"
+      conversion: "Route handler multiplies by 100 before sending to FE"
+      minimum: ">=0.70 for valid alert, >=0.70 for notification"
+    symbols:
+      canonical: BTC
+      yahoo: BTC-USD
+      binance: BTCUSDT
+      tradingview: "BINANCE:BTCUSDT"
+      display: "BTC - USDT (for crypto), SPY (for ETF)"
+    botIds: "[etf_bot, cmdty_bot, forex_bot, crypto_bot, market_bot]"
+    assetClasses: "[ETF, CRYPTO, COMMODITY, FOREX, INDEX] always UPPERCASE"
+    regimes: "[BULL, BEAR] only two values"
+  activeStrategies:
+    crypto_v7: "CRYPTO | WR 95.3% | CAGR 299.3% | Sharpe 14.2 | ATR TP=1.0x SL=10.0x | RSI<28 + OB + FVG"
+    etf_v3: "ETF | WR 69.8% | CAGR 6.49% | Sharpe 3.10"
+    commodity_v3: "COMMODITY | WR 71.4% | CAGR 8.19% | Sharpe 2.33"
+    forex_v3: "FOREX | WR 83.3% | CAGR 2.98% | Sharpe 5.53"
+    index_v3: "INDEX | WR 72.0% | CAGR 7.85% | Sharpe 2.80"
+    retired: "[crypto_v3, crypto_v4, crypto_v5] is_active=false"
+  alertTypes:
+    RSI_SIGNAL: "24h dedup main RSI cross signal"
+    RSI_OVERSOLD: "24h dedup RSI below threshold"
+    RSI_OVERBOUGHT: "24h dedup RSI above threshold"
+    SMC_OB_ENTRY: "24h dedup Order Block entry (crypto_v7)"
+    FVG_FILL: "24h dedup Fair Value Gap fill (crypto_v7)"
+    TP_SL_HIT: "0h never dedup trade exit"
+    REGIME_CHANGE: "1h dedup BULL-BEAR switch"
+    CIRCUIT_BREAKER: "1h dedup consecutive losses"
+    MARKET_SHOCK: "30m dedup market event (Module VI)"
+    WHALE_TRADE: "0h dedup whale trade (Module VI)"
+    LIQUIDATION: "0h dedup liquidation (Module VI)"
+    DAILY_SUMMARY: "24h dedup portfolio summary"
+  confidenceFormula:
+    weights: "rsi_extremity=0.60, asset_base_rate=0.25, sharpe=0.15"
+    sell_penalty: "0.60 (SELL signals penalized, BUY-only in BULL regime)"
+    clamp: "[0.20, 0.95]"
+    source: "_lib/tradingbot/config/constants.py::get_confidence_weights()"
+  dataFlow:
+    prices:
+      crypto: "CCXT (Binance-Bybit-OKX-Gate.io-KuCoin-Kraken) then rsi_engine.py then indicator_alerts"
+      nonCrypto: "SourcePool (Yahoo-Finnhub-FMP-AV-TwelveData-IEX) then backtest scripts"
+    alerts: "RSI/SMC engine then save_alert() then indicator_alerts then bridge then Telegram + API then FE"
+    api: "FastAPI :9192 then /api/alerts, /api/trades, /api/backtest, /api/health_log"
+    fe: "React :80 (nginx) then AlertsPage(/), BacktestPage(/backtest), LogPage(/log)"
+    sse: "GET /api/alerts/stream SSE (nginx X-Accel-Buffering=no)"
+  importConvention:
+    rule: Always absolute from tradingbot package
+    example: "from tradingbot.db.indicator_db import IndicatorDatabase"
+    syspath: "_lib/ added to sys.path by setup.py"
+    never: "Never relative imports (from ..db import X)"
+  filePlacement:
+    sharedPython: "_lib/tradingbot/{module}/"
+    apiRoute: "dashboard/api/routes/"
+    apiProxy: "dashboard/api/proxies/"
+    feComponent: "dashboard/frontend/src/components/{category}/"
+    fePage: "dashboard/frontend/src/pages/"
+    feService: "dashboard/frontend/src/services/"
+    feType: "dashboard/frontend/src/shared/types/"
+    botCommand: "telebot/bot/commands/"
+    schedulerEngine: "telebot/bot/scheduler/"
+    backtestScript: "backtest/scripts/{category}/"
+    config: "shared/"
+  keyConstants:
+    PRICE_CACHE_TTL: "20 min"
+    ORCHESTRATOR_INTERVAL: "900 sec (15 min)"
+    MAX_CONCURRENT_POSITIONS: 5
+    DRAWDOWN_CIRCUIT_BREAKER_LOSSES: "3 consecutive"
+    DRAWDOWN_CIRCUIT_BREAKER_HOURS: "24h cooldown"
+    VIX_SPIKE_THRESHOLD: "3 points"
+    DOMINANCE_Z_MODERATE: 2.0
+    DOMINANCE_Z_STRONG: 2.5
+    RESET_INDICATOR_ON_BOOT: "MUST be false in production"
+
+# ═══════════════════════════════════════════
+# PRODUCT ROADMAP
+# ═══════════════════════════════════════════
+productRoadmap:
+  currentVersion: v3.9.9
+  currentState: "Audit FULL PASS | crypto_v7 deployed | 5 modules live | 135 symbols"
+  phase1_core:
+    status: DONE
+    features:
+      - "Alert Generation: OHLCV then RSI/SMC engine then indicator_alerts then AlertsPage"
+      - "Telegram Delivery: indicator_alerts then bridge then 4 bot channels"
+      - "Backtest Viewer: backtest_results.db then BacktestPage"
+      - "System Health: bot_regimes + sentinel then LogPage"
+      - "Market Intelligence: MARKET_SHOCK + WHALE_TRADE + LIQUIDATION Module VI"
+  phase2_ux:
+    status: NEXT
+    priority: HIGH
+    features:
+      - id: P2-01
+        name: Alert History and Advanced Filtering
+        customerNeed: "Tim lai alert cu, filter theo symbol/type/confidence/date"
+        dataSource: "indicator_alerts (existing table)"
+        dbChange: "Add indexes: idx_alerts_symbol, idx_alerts_date_range"
+        api: "GET /api/alerts?symbol=BTC&type=RSI_SIGNAL&from=...&to=...&min_confidence=80"
+        fe: "AlertsPage FilterPanel + Pagination + DatePicker + Search"
+        effort: "BE:SIMPLE + FE:STANDARD"
+      - id: P2-02
+        name: Portfolio Dashboard
+        customerNeed: "Xem tong PnL, equity curve, open positions real-time"
+        dataSource: "indicator_trades + indicator_positions + indicator_equity (existing)"
+        dbChange: None
+        api: "GET /api/portfolio/summary, /api/portfolio/equity, /api/portfolio/positions"
+        fe: "New PortfolioPage EquityCurveChart + PositionsTable + PnLSummaryCard"
+        effort: "BE:STANDARD + FE:STANDARD"
+      - id: P2-03
+        name: Strategy Performance Comparison
+        customerNeed: "So sanh hieu suat strategy (WR, CAGR, MaxDD, Sharpe)"
+        dataSource: "backtest_stats + strategies.config.json (existing)"
+        dbChange: None
+        api: "GET /api/strategies/performance"
+        fe: "StrategyCard PerformanceChart + ComparisonTable"
+        effort: "BE:SIMPLE + FE:SIMPLE"
+      - id: P2-04
+        name: Custom Watchlist
+        customerNeed: "Theo doi symbols yeu thich, nhan alert filter rieng"
+        dataSource: "NEW table: user_watchlists(user_id, symbol, notes, created_at)"
+        dbChange: "CREATE TABLE user_watchlists in indicator.db"
+        api: "GET/POST/DELETE /api/watchlist"
+        fe: "WatchlistPanel in AlertsPage (toggle filter)"
+        effort: "BE:STANDARD + FE:STANDARD"
+      - id: P2-05
+        name: Alert Outcome Tracking (WIN/LOSS)
+        customerNeed: "Biet alert BUY co WIN/LOSS khong, PnL bao nhieu %"
+        dataSource: "indicator_alerts.outcome + indicator_alerts.pnl_percent (columns exist)"
+        dbChange: "None (columns exist), need TP/SL monitoring engine in scheduler"
+        api: "Existing GET /api/alerts already returns outcome/pnl_percent"
+        fe: "AlertCard outcome badge (WIN green / LOSS red / PENDING gray)"
+        effort: "BE:STANDARD (monitoring engine) + FE:SIMPLE"
+      - id: P2-06
+        name: Notification Preferences UI
+        customerNeed: "Chon loai alert muon nhan, set min confidence, filter symbols"
+        dataSource: "subscribers table + notification_preferences (existing or extend)"
+        dbChange: "May need new columns in subscribers or new table"
+        api: "GET/PUT /api/notifications/preferences"
+        fe: "SettingsPage NotificationPreferencesForm"
+        effort: "BE:SIMPLE + FE:STANDARD"
+  phase3_monetization:
+    status: PLANNED
+    priority: MEDIUM
+    features:
+      - id: P3-01
+        name: "Subscription Tiers (Free/Pro/Enterprise)"
+        customerNeed: "Free=5 alerts/day, Pro=unlimited+portfolio, Enterprise=API access"
+        dataSource: "license_keys add tier column (free/pro/enterprise)"
+        dbChange: "ALTER TABLE license_keys ADD COLUMN tier TEXT DEFAULT 'free'"
+        api: "GET /api/subscription, POST /api/subscription/upgrade"
+        fe: "SubscriptionPage PricingTable + UpgradeButton"
+      - id: P3-02
+        name: "Usage Analytics (Admin)"
+        customerNeed: "Track engagement, popular symbols, peak hours, retention"
+        dataSource: "NEW table: user_activity(user_id, action, symbol, timestamp)"
+        dbChange: "CREATE TABLE user_activity in indicator.db"
+        api: "GET /api/admin/analytics"
+        fe: "AdminPage AnalyticsChart + UserTable"
+      - id: P3-03
+        name: "API Access (Enterprise)"
+        customerNeed: "Developers integrate alerts vao bot/app rieng"
+        dataSource: "user_api_keys (existing table)"
+        dbChange: None
+        api: "API key auth header all /api/* endpoints"
+        fe: "SettingsPage APIKeyManager (generate/revoke)"
+  phase4_scale:
+    status: FUTURE
+    priority: LOW
+    features:
+      - id: P4-01
+        name: "1-Click Exchange Trading"
+        customerNeed: "Trade truc tiep tren Binance/Bybit/OKX tu alert"
+        dataSource: "user_api_keys (encrypted exchange creds)"
+        api: "POST /api/trade/execute"
+      - id: P4-02
+        name: "Copy Trading / Social"
+        customerNeed: "Follow top traders, auto-copy alerts"
+        dataSource: "NEW tables: trader_profiles, copy_subscriptions"
+      - id: P4-03
+        name: "Mobile Push Notifications"
+        customerNeed: "Push notification khi co alert moi"
+        dataSource: "NEW table: push_tokens(user_id, token, platform)"
+  shippingCriteria:
+    perFeature:
+      - Customer need clearly stated (WHY)
+      - Data source identified (existing DB table or new CREATE TABLE)
+      - API contract defined (method, path, request body, response shape)
+      - FE component identified (new page or existing component)
+      - Effort classified (TRIVIAL/SIMPLE/STANDARD/COMPLEX per BE + FE)
+    perPhase:
+      - All features pass QC + Reviewer APPROVED
+      - All new API endpoints documented in codemap.md
+      - All new tables have migration scripts (idempotent)
+      - Docker build passes with zero errors
+      - No S-01 through S-06 security violations
+      - project.md updated with version entry
+    perRelease:
+      - Version bumped in project.md
+      - Git tag created (vX.Y.Z)
+      - Release notes written (DEPLOY-04)
+      - Production health verified (DEPLOY-06)

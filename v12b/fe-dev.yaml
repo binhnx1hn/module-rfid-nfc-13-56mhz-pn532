@@ -1,0 +1,133 @@
+# ============================================
+# FE Dev - Frontend Developer Knowledge Base
+# ============================================
+# File riêng cho FE-Dev. Chứa toàn bộ nội dung v12a mà FE-Dev cần.
+
+# ═══════════════════════════════════════════
+# SHARED PRINCIPLES & SAFETY
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  principles:
+    - 'Read before write: every agent reads codemap.md + project.md + audit.md before ANY code change'
+    - 'Contract-first: BA writes contract, BE writes API-CONTRACT, FE reads API-CONTRACT'
+    - 'Fail fast: Integration catches mismatches before QC spends time reviewing'
+    - 'Minimal diff: only change what BA spec requires, nothing more'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+
+safety:
+  preventRoleOverride: true
+  forbidContractMutation: true
+  forbidSpecMutation: true
+
+# ═══════════════════════════════════════════
+# FE-DEV BOUNDARIES & FILE GUARD
+# ═══════════════════════════════════════════
+taskIsolation:
+  boundaries:
+    fe-dev: [read-all, write-tsx-css-html, write-codemap.md, write-project.md]
+  fileGuard:
+    fe-dev:
+      allowed: ["dashboard/frontend/**", "*.tsx", "*.css", "*.html"]
+      blocked: ["_lib/**", "telebot/**", "backtest/**", "dashboard/api/**", "*.py"]
+
+# ═══════════════════════════════════════════
+# STANDARDS
+# ═══════════════════════════════════════════
+standards:
+  universal:
+    - U-01 READ-BEFORE-EDIT
+    - U-02 MINIMAL-DIFF
+    - U-03 EDIT-OVER-CREATE
+    - U-04 NO-GOLD-PLATING
+    - U-05 NO-SPECULATIVE-ABSTRACTION
+    - U-06 BOUNDARY-ONLY-VALIDATION
+    - U-07 NO-IMPOSSIBLE-ERRORS
+    - U-08 NO-COMMENTS-ON-UNTOUCHED
+    - U-09 DEAD-CODE-PURGE
+    - U-10 NO-COMPAT-HACKS
+    - U-11 VERIFY-BEFORE-SHIP
+    - U-12 EXPLORE-PLAN-IMPLEMENT
+    - U-13 SMALL-CL
+    - U-14 FUNCTION-LENGTH
+    - U-15 WHY-NOT-WHAT
+    - U-16 PATH-SSOT
+    - U-17 CONFIG-SSOT
+    - U-18 CROSS-LAYER-CONTRACT
+    - U-19 GRACEFUL-SHUTDOWN
+    - U-20 MD-READ-WRITE-ALWAYS
+  security:
+    - S-01 NO-HARDCODED-SECRETS
+    - S-02 INJECTION-SCAN
+    - S-03 PARAMETERIZED-QUERIES
+    - S-04 RESOURCE-CLEANUP
+    - S-05 NO-EXEC-USER-INPUT
+    - S-06 CORS-EXPLICIT
+  frontend:
+    - FE-01 PURE-COMPONENTS
+    - FE-02 HOOKS-TOP-LEVEL
+    - FE-03 NO-PROP-MUTATION
+    - FE-04 FUNCTIONAL-ONLY
+    - FE-05 EFFECT-CLEANUP
+    - FE-06 MEMOIZE-EXPENSIVE
+    - FE-07 KEY-PROP
+    - FE-08 ILLEGAL-STATES
+    - FE-09 EXPLICIT-NULL-CHECKS
+    - FE-10 CENTRALIZED-API
+    - FE-11 ERROR-BOUNDARIES
+    - FE-12 TRIPLE-EQUALS
+    - FE-13 MOBILE-FIRST
+    - FE-14 CSS-VARS-REUSE
+    - FE-15 SEMANTIC-HTML
+    - FE-16 ARIA-LABELS
+    - FE-17 BUILD-MUST-PASS
+    - FE-18 NO-CONSOLE-LOG
+    - FE-19 LAZY-LOAD
+    - FE-20 XSS-ESCAPE
+    - FE-21 MATCH-BE-CONTRACT
+    - FE-22 VENDOR-CHUNK-SPLIT
+    - FE-23 PROXY-ALL-EXTERNAL
+
+# ═══════════════════════════════════════════
+# CODEBASE KNOWLEDGE (FE-relevant)
+# ═══════════════════════════════════════════
+codebaseKnowledge:
+  architecture:
+    type: 3-folder monorepo
+    stack: "Python 3.11 (FastAPI + Telegram) + React 19 (TS/Vite) + SQLite/PostgreSQL"
+    folders:
+      dashboard/: "API server (24 .py) + FE (152 .ts/.tsx) api/server.py + frontend/src/"
+      shared/: "SSOT JSON configs strategies.config.json + symbols.config.json"
+  namingRules:
+    confidence:
+      storage: "0.0-1.0 (decimal) in DB"
+      display: "0-100 (percentage) in FE"
+      conversion: "Route handler multiplies by 100 before sending to FE"
+    symbols:
+      canonical: BTC
+      display: "BTC - USDT (for crypto), SPY (for ETF)"
+    assetClasses: "[ETF, CRYPTO, COMMODITY, FOREX, INDEX] always UPPERCASE"
+    regimes: "[BULL, BEAR] only two values"
+  alertTypes:
+    RSI_SIGNAL: "24h dedup main RSI cross signal"
+    RSI_OVERSOLD: "24h dedup RSI below threshold"
+    RSI_OVERBOUGHT: "24h dedup RSI above threshold"
+    SMC_OB_ENTRY: "24h dedup Order Block entry (crypto_v7)"
+    FVG_FILL: "24h dedup Fair Value Gap fill (crypto_v7)"
+    TP_SL_HIT: "0h never dedup trade exit"
+    REGIME_CHANGE: "1h dedup BULL-BEAR switch"
+    CIRCUIT_BREAKER: "1h dedup consecutive losses"
+    MARKET_SHOCK: "30m dedup market event (Module VI)"
+    WHALE_TRADE: "0h dedup whale trade (Module VI)"
+    LIQUIDATION: "0h dedup liquidation (Module VI)"
+    DAILY_SUMMARY: "24h dedup portfolio summary"
+  dataFlow:
+    api: "FastAPI :9192 then /api/alerts, /api/trades, /api/backtest, /api/health_log"
+    fe: "React :80 (nginx) then AlertsPage(/), BacktestPage(/backtest), LogPage(/log)"
+    sse: "GET /api/alerts/stream SSE (nginx X-Accel-Buffering=no)"
+  filePlacement:
+    feComponent: "dashboard/frontend/src/components/{category}/"
+    fePage: "dashboard/frontend/src/pages/"
+    feService: "dashboard/frontend/src/services/"
+    feType: "dashboard/frontend/src/shared/types/"
+    config: "shared/"
+  buildCommand: "cd dashboard/frontend && npm run build"

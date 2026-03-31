@@ -1,0 +1,95 @@
+# ============================================
+# Vision Parser - Visual Verifier Knowledge Base
+# ============================================
+# File riêng cho Vision Parser. Chứa toàn bộ nội dung v12a mà Vision cần.
+
+# ═══════════════════════════════════════════
+# SHARED PRINCIPLES
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  principles:
+    - 'Fail fast: Integration catches mismatches before QC spends time reviewing'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+  qualityGates:
+    - gate: vision-parser
+      purpose: "Verify it LOOKS RIGHT (layout, responsive, states)"
+
+# ═══════════════════════════════════════════
+# TESTING STRATEGY (Vision-specific)
+# ═══════════════════════════════════════════
+testingStrategy:
+  perRole:
+    vision-parser:
+      tier1:
+        method: "Roo built-in browser_action + screenshots"
+        steps:
+          - "npm run build and npx serve dist to start local preview"
+          - "Use browser_action launch to navigate to localhost"
+          - "Screenshot at default viewport (900x600)"
+          - "Compare screenshots against BA spec wireframe"
+        limitation: "Single viewport size, no resize, screenshot-only"
+      tier2:
+        method: "Chrome DevTools MCP (full capabilities)"
+        steps:
+          - "npm run build and npx serve dist OR navigate to dev server"
+          - "Use resize_page to set viewport: 375px (mobile), 768px (tablet), 1280px (desktop)"
+          - "Use take_screenshot at each viewport"
+          - "Use take_snapshot to verify DOM structure matches spec"
+          - "Use evaluate_script to check element visibility and computed styles"
+          - "Use list_console_messages to catch render errors"
+          - "Use emulate to test device-specific rendering"
+      fallback: "If both tiers fail, review JSX/CSS source code + npm run build success"
+
+# ═══════════════════════════════════════════
+# VISION ENGINE
+# ═══════════════════════════════════════════
+visionEngine:
+  adaptiveBatching: true
+  maxBatch: 4
+  queueTimeoutMs: 200
+  preprocessing:
+    autoResize: true
+    maxWidth: 1280
+    jpegQuality: 0.75
+  smartSampling:
+    enabled: true
+    videoFrameStep: 5
+    diffThreshold: 0.08
+  outputFormat: structured-json
+  extract: [objects, text, ui_state, anomalies, layout]
+  limits:
+    maxImageSizeMB: 5
+    maxImagesPerTask: 6
+  overloadProtection:
+    dropFramesIfBusy: true
+    prioritizeLatest: true
+
+# ═══════════════════════════════════════════
+# SCREENSHOT VERIFY CHECKS
+# ═══════════════════════════════════════════
+screenshotVerify:
+  enabled: true
+  trigger: vision-parser
+  checks:
+    - id: VIS-01
+      name: Layout matches spec
+      description: "Screenshot FE after build + serve. Verify layout matches BA spec wireframe."
+    - id: VIS-02
+      name: No visual regressions
+      description: "Compare with previous version. Flag layout shifts, broken components."
+    - id: VIS-03
+      name: Responsive check
+      description: "375px mobile, 768px tablet, 1280px desktop. All breakpoints render correctly."
+    - id: VIS-04
+      name: Error states visible
+      description: "Loading/error/empty states display correctly, not blank screen."
+  whenToSkip:
+    - "BE-only changes (no FE impact)"
+    - "No wireframe in BA spec (skip VIS-01)"
+    - "No previous screenshot available (skip VIS-02)"
+
+# ═══════════════════════════════════════════
+# BUILD & SERVE
+# ═══════════════════════════════════════════
+buildCommand: "cd dashboard/frontend && npm run build"
+serveCommand: "npx serve dist"

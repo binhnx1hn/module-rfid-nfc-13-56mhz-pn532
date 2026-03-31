@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PN532 Card Reader Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-title">
+      <span class="header-icon">&#128273;</span>
+      <h1>PN532 Card Reader</h1>
+      <span class="version-tag">v2.0</span>
+    </div>
+    <nav class="admin-nav">
+      <a href="/admin" class="nav-link">&#9881;&#65039; Admin</a>
+    </nav>
+    <div class="header-badges">
+      <span class="badge-label">Reader:</span>
+      <span id="badge-reader" class="badge badge-warn">INITIALIZING</span>
+
+      <span class="badge-label">Hub:</span>
+      <span id="badge-hub" class="badge badge-gray">UNKNOWN</span>
+
+      <span class="badge-label">WS:</span>
+      <span id="badge-ws" class="badge badge-warn blink">Connecting...</span>
+
+      <span class="badge-label">Scans:</span>
+      <span id="badge-scans" class="badge badge-info">0</span>
+
+      <span class="badge-label">Uptime:</span>
+      <span id="badge-uptime" class="badge badge-info">0s</span>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT: Live Scan + Registry -->
+  <main class="main-grid">
+    <!-- LEFT: Live Scan Log -->
+    <section class="panel panel-live">
+      <div class="panel-header">
+        <h2>&#128258; Live Scan Log</h2>
+        <span id="ws-status-text" class="ws-status-text">Connecting...</span>
+      </div>
+      <div id="live-log" class="live-log">
+        <div class="empty-placeholder" id="live-empty">No events yet — waiting for card scan...</div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Card/User Registry -->
+    <section class="panel panel-registry">
+      <div class="panel-header">
+        <h2>&#128100; Card / User Registry</h2>
+        <button id="btn-refresh-cards" class="btn-refresh" title="Refresh registry">&#8635; Refresh</button>
+      </div>
+      <div class="table-wrapper">
+        <table id="registry-table" class="data-table">
+          <thead>
+            <tr>
+              <th>Card ID</th>
+              <th>Person Name</th>
+              <th>Person ID</th>
+              <th>Access</th>
+            </tr>
+          </thead>
+          <tbody id="registry-body">
+            <tr><td colspan="4" class="empty-cell">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- BOTTOM: Access History -->
+  <section class="panel panel-history">
+    <div class="panel-header">
+      <h2>&#128203; Access History</h2>
+      <span class="history-count">Last <span id="history-count">0</span> events (max 100)</span>
+    </div>
+    <div class="table-wrapper table-wrapper-history">
+      <table id="history-table" class="data-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Card ID</th>
+            <th>Person</th>
+            <th>Access</th>
+            <th>Hub</th>
+            <th>Message</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="6" class="empty-cell">No events yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

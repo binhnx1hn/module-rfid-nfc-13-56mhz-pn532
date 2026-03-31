@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PN532 Admin — Card Management</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-title">
+      <span class="header-icon">&#9881;&#65039;</span>
+      <h1>PN532 Admin</h1>
+      <span class="version-tag">v2.1</span>
+    </div>
+    <nav class="admin-nav">
+      <a href="/" class="nav-link">&#8592; Dashboard</a>
+      <a href="/admin" class="nav-link nav-link-active">&#9881;&#65039; Admin</a>
+    </nav>
+  </header>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- ADD NEW CARD FORM -->
+  <section class="panel form-panel">
+    <div class="panel-header">
+      <h2>&#43; Thêm thẻ mới</h2>
+    </div>
+    <form id="add-card-form" class="admin-form" novalidate>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="input-card-id" class="form-label">Card ID <span class="required">*</span></label>
+          <input
+            type="text"
+            id="input-card-id"
+            name="card_id"
+            class="form-input"
+            placeholder="VD: A66AB0AA"
+            maxlength="16"
+            autocomplete="off"
+            required
+          />
+          <span class="form-hint">Hex chars only, tự động uppercase</span>
+        </div>
+        <div class="form-group">
+          <label for="input-person-id" class="form-label">Person ID <span class="required">*</span></label>
+          <input
+            type="text"
+            id="input-person-id"
+            name="person_id"
+            class="form-input"
+            placeholder="VD: EMP001"
+            autocomplete="off"
+            required
+          />
+        </div>
+        <div class="form-group full-width">
+          <label for="input-person-name" class="form-label">Tên người dùng <span class="required">*</span></label>
+          <input
+            type="text"
+            id="input-person-name"
+            name="person_name"
+            class="form-input"
+            placeholder="VD: Nguyen Van A"
+            autocomplete="off"
+            required
+          />
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">Quyền truy cập</label>
+          <div class="access-toggle">
+            <label class="toggle-label">
+              <input type="checkbox" id="input-access" name="access" checked />
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <span id="access-label-text" class="toggle-text">&#10003; Cho phép</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-add-card">
+          &#43; Thêm thẻ
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- CARD REGISTRY TABLE -->
+  <section class="panel">
+    <div class="panel-header">
+      <h2>&#128100; Card Registry <span id="card-count-badge" class="badge badge-info">0 thẻ</span></h2>
+      <button id="btn-refresh" class="btn-refresh" title="Làm mới danh sách">&#8635; Làm mới</button>
+    </div>
+    <div class="table-wrapper admin-table-wrapper">
+      <table id="admin-table" class="data-table">
+        <thead>
+          <tr>
+            <th>Card ID</th>
+            <th>Person ID</th>
+            <th>Tên người dùng</th>
+            <th>Quyền</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="admin-table-body">
+          <tr><td colspan="5" class="empty-cell">Đang tải...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <script src="/static/admin.js" defer></script>
+</body>
+</html>

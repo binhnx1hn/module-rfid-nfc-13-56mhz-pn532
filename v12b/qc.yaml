@@ -1,0 +1,177 @@
+# ============================================
+# QC - Quality Control Knowledge Base
+# ============================================
+# File riêng cho QC. Chứa toàn bộ nội dung v12a mà QC cần.
+# QC cần ALL standards — đây là file lớn nhất vì QC audit tất cả.
+
+# ═══════════════════════════════════════════
+# SHARED PRINCIPLES & SAFETY
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  principles:
+    - 'Read before write: every agent reads codemap.md + project.md + audit.md before ANY code change'
+    - 'Contract-first: BA writes contract, BE writes API-CONTRACT, FE reads API-CONTRACT'
+    - 'Fail fast: Integration catches mismatches before QC spends time reviewing'
+    - 'Minimal diff: only change what BA spec requires, nothing more'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+  qualityGates:
+    - gate: integration
+      purpose: "Verify it WORKS (builds, starts, responds)"
+    - gate: vision-parser
+      purpose: "Verify it LOOKS RIGHT (layout, responsive, states)"
+    - gate: qc
+      purpose: "Verify it is CORRECT and CLEAN (specs, standards, security)"
+    - gate: reviewer
+      purpose: "Verify it is WISE (architecture, production readiness, tech debt)"
+
+safety:
+  preventRoleOverride: true
+  forbidContractMutation: true
+  forbidSpecMutation: true
+
+# ═══════════════════════════════════════════
+# ALL STANDARDS (QC audits everything)
+# ═══════════════════════════════════════════
+standards:
+  universal:
+    - U-01 READ-BEFORE-EDIT
+    - U-02 MINIMAL-DIFF
+    - U-03 EDIT-OVER-CREATE
+    - U-04 NO-GOLD-PLATING
+    - U-05 NO-SPECULATIVE-ABSTRACTION
+    - U-06 BOUNDARY-ONLY-VALIDATION
+    - U-07 NO-IMPOSSIBLE-ERRORS
+    - U-08 NO-COMMENTS-ON-UNTOUCHED
+    - U-09 DEAD-CODE-PURGE
+    - U-10 NO-COMPAT-HACKS
+    - U-11 VERIFY-BEFORE-SHIP
+    - U-12 EXPLORE-PLAN-IMPLEMENT
+    - U-13 SMALL-CL
+    - U-14 FUNCTION-LENGTH
+    - U-15 WHY-NOT-WHAT
+    - U-16 PATH-SSOT
+    - U-17 CONFIG-SSOT
+    - U-18 CROSS-LAYER-CONTRACT
+    - U-19 GRACEFUL-SHUTDOWN
+    - U-20 MD-READ-WRITE-ALWAYS
+  security:
+    - S-01 NO-HARDCODED-SECRETS
+    - S-02 INJECTION-SCAN
+    - S-03 PARAMETERIZED-QUERIES
+    - S-04 RESOURCE-CLEANUP
+    - S-05 NO-EXEC-USER-INPUT
+    - S-06 CORS-EXPLICIT
+  backend:
+    - BE-01 NO-BARE-EXCEPT
+    - BE-02 IMMUTABLE-DEFAULTS
+    - BE-03 CONTEXT-MANAGERS
+    - BE-04 TYPE-HINTS
+    - BE-05 PATHLIB-OVER-STRINGS
+    - BE-06 ASYNC-DISCIPLINE
+    - BE-07 LOGGING-OVER-PRINT
+    - BE-08 CONSISTENT-RESPONSE
+    - BE-09 RATE-LIMITING
+    - BE-10 IDEMPOTENT-GETS
+    - BE-11 GRACEFUL-DEGRADATION
+    - BE-12 PARAMETERIZED-ONLY
+    - BE-13 INDEX-AWARENESS
+    - BE-14 UPSERT-OVER-DELETE-INSERT
+    - BE-15 TIMEOUT-ALWAYS
+    - BE-16 RATE-RESPECT
+    - BE-17 USER-AGENT
+    - BE-18 SYMBOL-NORMALIZE
+    - BE-19 COLUMN-CASE-CONTRACT
+    - BE-20 FETCH-STORE-SERVE
+    - BE-21 SOURCE-WATERFALL
+    - BE-22 DETERMINISTIC-IDS
+    - BE-23 ENV-DRIVEN-PATHS
+    - BE-24 CATEGORY-AWARE-ROUTING
+  frontend:
+    - FE-01 PURE-COMPONENTS
+    - FE-02 HOOKS-TOP-LEVEL
+    - FE-03 NO-PROP-MUTATION
+    - FE-04 FUNCTIONAL-ONLY
+    - FE-05 EFFECT-CLEANUP
+    - FE-06 MEMOIZE-EXPENSIVE
+    - FE-07 KEY-PROP
+    - FE-08 ILLEGAL-STATES
+    - FE-09 EXPLICIT-NULL-CHECKS
+    - FE-10 CENTRALIZED-API
+    - FE-11 ERROR-BOUNDARIES
+    - FE-12 TRIPLE-EQUALS
+    - FE-13 MOBILE-FIRST
+    - FE-14 CSS-VARS-REUSE
+    - FE-15 SEMANTIC-HTML
+    - FE-16 ARIA-LABELS
+    - FE-17 BUILD-MUST-PASS
+    - FE-18 NO-CONSOLE-LOG
+    - FE-19 LAZY-LOAD
+    - FE-20 XSS-ESCAPE
+    - FE-21 MATCH-BE-CONTRACT
+    - FE-22 VENDOR-CHUNK-SPLIT
+    - FE-23 PROXY-ALL-EXTERNAL
+  ba:
+    - BA-01 ATOMIC-TASKS
+    - BA-02 FILE-PATH-REQUIRED
+    - BA-03 NO-VAGUE-SPECS
+    - BA-04 SCOPE-GATE
+    - BA-05 RISK-ASSESSMENT
+    - BA-06 REUSE-CHECK
+    - BA-07 DEPENDENCY-APPROVAL
+    - BA-08 COMPLEXITY-HONEST
+
+# ═══════════════════════════════════════════
+# TESTING STRATEGY (QC-specific)
+# ═══════════════════════════════════════════
+testingStrategy:
+  perRole:
+    qc:
+      tier1:
+        method: "Code review + build verification + terminal API testing"
+        steps:
+          - "npm run build MUST pass (FE-17)"
+          - "Read JSX/TSX source code to verify component logic"
+          - "curl API endpoints to verify response contracts"
+          - "Trust Vision Parser screenshots for visual verification"
+      tier2:
+        method: "Code review + Chrome DevTools MCP deep inspection"
+        steps:
+          - "npm run build MUST pass (FE-17)"
+          - "Read source code for logic review (same as Tier 1)"
+          - "Use list_console_messages to catch ALL console errors and warnings"
+          - "Use list_network_requests to verify API calls match contract"
+          - "Use lighthouse_audit for performance, accessibility, SEO scores"
+          - "Use evaluate_script to verify runtime state (e.g. check store values)"
+          - "Use take_snapshot to verify DOM matches expected structure"
+      delegation: "Visual layout issues are Vision Parser responsibility. QC trusts Vision output."
+  buildAsGate: true
+  buildCommand: "cd dashboard/frontend && npm run build"
+  buildMustPass: "FE-17 BUILD-MUST-PASS is the PRIMARY frontend quality gate regardless of tier"
+
+# ═══════════════════════════════════════════
+# CODEBASE KNOWLEDGE (QC-relevant)
+# ═══════════════════════════════════════════
+codebaseKnowledge:
+  namingRules:
+    tablePrefix:
+      backtest: "backtest_alerts, backtest_trades (Module I historical 2010-2025)"
+      indicator: "indicator_alerts, indicator_trades (Module II live 24/7)"
+      pgAlias: "PG table 'alerts' = indicator_alerts (abstraction layer handles mapping)"
+    confidence:
+      storage: "0.0-1.0 (decimal) in DB"
+      display: "0-100 (percentage) in FE"
+      conversion: "Route handler multiplies by 100 before sending to FE"
+    symbols:
+      canonical: BTC
+      yahoo: BTC-USD
+      binance: BTCUSDT
+    assetClasses: "[ETF, CRYPTO, COMMODITY, FOREX, INDEX] always UPPERCASE"
+    regimes: "[BULL, BEAR] only two values"
+  importConvention:
+    rule: "Always absolute from tradingbot package"
+    example: "from tradingbot.db.indicator_db import IndicatorDatabase"
+    never: "Never relative imports (from ..db import X)"
+  keyConstants:
+    RESET_INDICATOR_ON_BOOT: "MUST be false in production"
+  deployment:
+    ports: "API=9192, FE=80(nginx), Backtest=8194"

@@ -1,0 +1,74 @@
+# ============================================
+# Reviewer - Final Authority Knowledge Base
+# ============================================
+# File riêng cho Reviewer. Chứa toàn bộ nội dung v12a mà Reviewer cần.
+
+# ═══════════════════════════════════════════
+# SHARED PRINCIPLES & SAFETY
+# ═══════════════════════════════════════════
+oneShotProtocol:
+  principles:
+    - 'Read before write: every agent reads codemap.md + project.md + audit.md before ANY code change'
+    - 'Contract-first: BA writes contract, BE writes API-CONTRACT, FE reads API-CONTRACT'
+    - 'Minimal diff: only change what BA spec requires, nothing more'
+    - 'Signal-driven: agents communicate via signals, not assumptions'
+  qualityGates:
+    - gate: integration
+      purpose: "Verify it WORKS (builds, starts, responds)"
+    - gate: vision-parser
+      purpose: "Verify it LOOKS RIGHT (layout, responsive, states)"
+    - gate: qc
+      purpose: "Verify it is CORRECT and CLEAN (specs, standards, security)"
+    - gate: reviewer
+      purpose: "Verify it is WISE (architecture, production readiness, tech debt)"
+
+safety:
+  preventRoleOverride: true
+  forbidContractMutation: true
+  forbidSpecMutation: true
+
+# ═══════════════════════════════════════════
+# UNIVERSAL STANDARDS (Reviewer checks architecture compliance)
+# ═══════════════════════════════════════════
+standards:
+  universal:
+    - U-01 READ-BEFORE-EDIT
+    - U-02 MINIMAL-DIFF
+    - U-03 EDIT-OVER-CREATE
+    - U-04 NO-GOLD-PLATING
+    - U-05 NO-SPECULATIVE-ABSTRACTION
+    - U-09 DEAD-CODE-PURGE
+    - U-13 SMALL-CL
+    - U-14 FUNCTION-LENGTH
+    - U-16 PATH-SSOT
+    - U-17 CONFIG-SSOT
+    - U-18 CROSS-LAYER-CONTRACT
+    - U-20 MD-READ-WRITE-ALWAYS
+
+# ═══════════════════════════════════════════
+# CODEBASE KNOWLEDGE (architecture overview for Reviewer)
+# ═══════════════════════════════════════════
+codebaseKnowledge:
+  architecture:
+    type: 3-folder monorepo
+    stack: "Python 3.11 (FastAPI + Telegram) + React 19 (TS/Vite) + SQLite/PostgreSQL"
+    deploy: "Railway all-in-one Docker: tini then nginx + uvicorn + telebot + backtest"
+    symbols: "135 total (59 Crypto, 36 Commodity, 33 Forex, 6 Index, 1 ETF)"
+    folders:
+      _lib/tradingbot/: "Shared Python package (92 .py)"
+      dashboard/: "API server (24 .py) + FE (152 .ts/.tsx)"
+      telebot/: "Telegram Bot + Scheduler (36 .py)"
+      backtest/: "Backtest Service + Scripts (64 .py)"
+      shared/: "SSOT JSON configs"
+      docs/: "project.md (PM), codemap.md (Devs), audit.md (QC)"
+  namingRules:
+    confidence:
+      storage: "0.0-1.0 (decimal) in DB"
+      display: "0-100 (percentage) in FE"
+    assetClasses: "[ETF, CRYPTO, COMMODITY, FOREX, INDEX] always UPPERCASE"
+  importConvention:
+    rule: "Always absolute from tradingbot package"
+    never: "Never relative imports"
+  deployment:
+    platform: "Railway single all-in-one Docker"
+    ports: "API=9192, FE=80(nginx), Backtest=8194"

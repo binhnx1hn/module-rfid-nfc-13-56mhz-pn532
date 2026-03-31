@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Docker
+*.log
+
+# Data (chứa thông tin nhân sự — không commit production data)
+# data/cards.json  ← cần giữ file mẫu, nhưng KHÔNG commit dữ liệu thật
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
