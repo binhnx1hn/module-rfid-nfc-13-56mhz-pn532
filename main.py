@@ -16,7 +16,9 @@ Run standalone with:
 import asyncio
 import threading
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+_TZ_HN = timezone(timedelta(hours=7))
 
 from pn532_reader import PN532Reader
 from card_registry import lookup_card, normalize_uid
@@ -58,7 +60,7 @@ def reader_loop(queue: asyncio.Queue, loop: asyncio.AbstractEventLoop, app_state
             )
 
             event = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(_TZ_HN).isoformat(),
                 "card_id": card_id,
                 "person_name": user["person_name"],
                 "person_id": user["person_id"],

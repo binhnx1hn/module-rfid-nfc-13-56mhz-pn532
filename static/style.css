@@ -131,6 +131,11 @@ body {
   border-color: rgba(239, 68, 68, 0.35);
 }
 
+/* Hide Hub badge when offline/error (keeps UI clean) */
+#badge-hub.badge-error {
+  display: none;
+}
+
 .badge-warn {
   background: rgba(245, 158, 11, 0.15);
   color: var(--warn);

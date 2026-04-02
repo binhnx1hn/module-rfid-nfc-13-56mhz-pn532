@@ -17,7 +17,8 @@ env/
 *.log
 
 # Data (chứa thông tin nhân sự — không commit production data)
-# data/cards.json  ← cần giữ file mẫu, nhưng KHÔNG commit dữ liệu thật
+# data/cards.json  ← giữ file local nhưng KHÔNG commit dữ liệu thật
+data/cards.json
 
 # IDE
 .vscode/

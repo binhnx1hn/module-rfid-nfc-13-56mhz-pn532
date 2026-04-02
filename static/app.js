@@ -17,11 +17,14 @@
 function formatTimestamp(iso) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
-  const pad = (n) => String(n).padStart(2, '0');
-  return (
-    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} ` +
-    `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
-  );
+  const fmt = new Intl.DateTimeFormat('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour12: false,
+  });
+  const p = fmt.formatToParts(d).reduce((acc, { type, value }) => { acc[type] = value; return acc; }, {});
+  return `${p.hour}:${p.minute}:${p.second} ${p.day}/${p.month}/${p.year}`;
 }
 
 /**
@@ -58,9 +61,13 @@ function makeAccessBadge(access) {
  */
 function makeHubBadge(hubStatus) {
   const el = document.createElement('span');
+  if (hubStatus === 'error') {
+    // Hide hub error badge everywhere in UI.
+    el.style.display = 'none';
+    return el;
+  }
   const map = {
     ok:      ['badge-ok',    'Hub: OK'],
-    error:   ['badge-error', 'Hub: ERR'],
     unknown: ['badge-gray',  'Hub: ?'],
   };
   const [cls, label] = map[hubStatus] || map.unknown;
@@ -91,9 +98,25 @@ function setReaderBadge(status) {
 }
 
 function setHubHeaderBadge(status) {
+  // Hide the whole Hub badge section when hub is offline/error.
+  // In index.html there is a separate label element right before #badge-hub.
+  const labelEl = elHubBadge?.previousElementSibling || null;
+  if (status === 'error') {
+    if (labelEl && labelEl.classList && labelEl.classList.contains('badge-label')) {
+      labelEl.style.display = 'none';
+    }
+    elHubBadge.style.display = 'none';
+    return;
+  }
+
+  // Ensure visible for other states.
+  if (labelEl && labelEl.classList && labelEl.classList.contains('badge-label')) {
+    labelEl.style.display = '';
+  }
+  elHubBadge.style.display = '';
+
   const map = {
     ok:      ['badge-ok',    'Hub: ONLINE'],
-    error:   ['badge-error', 'Hub: OFFLINE'],
     unknown: ['badge-gray',  'Hub: UNKNOWN'],
   };
   const [cls, label] = map[status] || ['badge-gray', `Hub: ${status}`];
